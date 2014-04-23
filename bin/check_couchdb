@@ -1,47 +1,127 @@
 #!/usr/bin/env node
-#
-#   Nagios check couchdb 0.9.5 by FreshX Labs / Oct 08th, 2013
-#
-#   For more info see https://github.com/FreshXOpenSource/check_couchdb
-#
-#   Usage: check_couchdb [options]
-#
-#   Options:
-#	--version        show program's version number and exit
-#	-h, --help       show this help message and exit
-#	--server=SERVER  Servername to connect to
-#	-H SERVER        Alias for --server
-#	--ssl            Enable SSL
-#	--user=USER      Authenticate as user
-#	--pass=PWD       Authenticate with pass
-#	--port=PORT      Connect to non default port (5984 or 6984
-#	--less           Dump less performance values
-#	--debug          Dump debug info's while running
-#
+//
+//   Nagios check couchdb 0.2.0 by FreshX Labs / 23.04.2014
+//
+//   For more info see https://github.com/FreshXOpenSource/check_couchdb
+//
+//   Usage: check_couchdb [options]
+//
+//   Options:
+//	--version        show program's version number and exit
+//	-h, --help       show this help message and exit
+//	--server=SERVER  Servername to connect to
+//	-H SERVER        Alias for --server
+//	--ssl            Enable SSL
+//	--user=USER      Authenticate as user
+//	--pass=PWD       Authenticate with pass
+//	--port=PORT      Connect to non default port (5984 or 6984
+//	--less           Dump less performance values
+//	--debug          Dump debug info's while running
+//
 
-var cradle = require('cradle'),
-    fs = require('fs'),
+var fs = require('fs'),
     async = require('async'),
-    readline = require('readline'),
-    minimist = require("minimist"),
-    argv = {}
+    defconf = {
+        P: 5984,
+        d: false,
+        s: false,
+        proto: "http",
+        urlAuth: "",
+        db: "_stats",
+        l: false,
+        conn: require('http')
+    },
+    config,
+    argv = require('minimist')(process.argv.slice(2));
 
-var argv = minimist.usage("Usage: $0 -H")
-            .demand("H")
-            .alias("H", "server")
-            .describe("H", "server to connect to")
-            .alias("h", "help")
-            .describe("h", "dump help")
-            .alias("s", "ssl")
-            .describe("s", "connect via SSL")
-            .alias("u", "user")
-            .describe("u", "user to connect as")
-            .alias("p", "password")
-            .describe("p", "password to connect with")
-            .alias("x", "port")
-            .describe("x", "port to connect to")
-            .alias("d", "debug")
-            .describe("d", "debug mode on")
-            .alias("l", "less")
-            .describe("l", "dump less performance values")
-            .argv
+function extend(target) {
+    var sources = [].slice.call(arguments, 1);
+    sources.forEach(function (source) {
+        for (var prop in source) {
+            target[prop] = source[prop];
+        }
+    });
+    return target;
+}     
+
+if(!argv.H) {
+        console.log("Usage: check_couchdb   [ -H HOSTNAME ]  host to connect to\n\
+                       [ -h ]           show help ]\n\
+                       [ -s ]           enable SSL, default NO ]\n\
+                       [ -u USERNAME ]  username to connect with ]\n\
+                       [ -p PASSWORD ]  password to connect with ]\n\
+                       [ -P PORT ]      port to connect to, default 5984 (nonssl), 6984 (ssl) ]\n\
+                       [ -d ]           enable debug mode ]\n\
+                       [ -l ]           dump less permformance data ]\n");
+        process.exit(1);
+} else {
+
+        config = extend({}, defconf, argv);
+
+        if(config.s){
+           config.proto="https";
+           config.connector=require('https')
+           if(!argv.P){
+              config.P = 6984;
+           }
+        } else {
+           config.connector=require('http')
+        }
+
+        if(config.u){
+           config.urlAuth = config.u + (config.p ? ":"+config.p : "" )+"@"
+        }
+
+        config.url = config.urlAuth+config.proto+"://"+argv.H
+
+ var handler = function(json) {
+    if (!json || 'error' in json) {
+        console.log('ERROR:', json.error);
+        process.exit(2);
+    }
+    
+    if (json.couchdb === 'Welcome') {
+        console.log('OK:', 'Couch (' + json.version + ') is up');
+        process.exit(0);
+    }
+
+    console.log('Uknown:', 'Unknown status: ' + JSON.stringify(json));
+    process.exit(3);
+ };
+
+
+var options = {
+  host: config.H,
+  port: config.P,
+  path: '/_stats',
+  headers: {
+    'Authorization': 'Basic ' + new Buffer(config.u + ':' + config.p).toString('base64')
+  }  
+};
+
+  process.on('uncaughtException', function (err) {
+      console.log("Error in "+err.syscall+" : "+err.code);
+      process.exit(2);
+  }); 
+
+
+  request = config.connector.get(options, function(res,err){
+    var body = "";
+    res.on('error', function(e) {
+      console.log("Got error: " + e.message + " / "+e);
+    });
+    res.on('data', function(data) {
+      body += data;
+    });
+    res.on('end', function() {
+      json = JSON.parse(body)
+      console.log(json.couchdb)
+    })
+    request.on('response', function(res) {
+      console.log('status code: ' + res.statusCode);
+    });
+
+  });
+
+
+}
