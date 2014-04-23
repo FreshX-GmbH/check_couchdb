@@ -9,8 +9,8 @@ Install
 `npm -g i check_couchdb`
 
 This will place a global bin in your path for `check_couchdb`. Now you can use it in Nagios as a command.
-
-Usage : ```check_couchdb  --version        show program's version number and exit
+```
+Usage : check_couchdb  --version        show program's version number and exit
     -h, --help       show this help message and exit
                         --server=SERVER  Servername to connect to
                         -H SERVER        Alias for --server
