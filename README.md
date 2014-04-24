@@ -1,7 +1,14 @@
 check_couchdb
 =============
 
-NodeJS Version of check_couchdb by FreshX
+NodeJS Version of check_couchdb by FreshX.
+
+Supports : 
+
+- IPv6
+- Authentication
+- Performance Data
+- SSL connects
 
 Install
 -------
@@ -22,7 +29,7 @@ i.e. on RedHat Systems this would look like :
 
 Usage
 -----
-This will place a global bin in your path for `check_couchdb`. Now you can use it in Nagios as a command.
+Now you can use it in Nagios as a command.
 
 ```
 Usage: check_couchdb   < -H HOSTNAME | --host >  host to connect to
