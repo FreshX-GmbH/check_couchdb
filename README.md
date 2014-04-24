@@ -13,11 +13,11 @@ check_couchdb@0.3.0 /usr/lib/node_modules/check_couchdb```
 
 Now link the check_couchdb binary into your nagios/centreon installation :
 
-`ln -s <path from your npm installation above>/bin/check_couchdb <path to your nagios plugins> `
+`ln -s <path from your npm installation above>/bin/check_couchdb <path to your nagios plugins>`
 
 i.e. on RedHat Systems this would look like :
 
-`ln -s /usr/lib/node_modules/check_couchdb/bin/check_couchdb /usr/lib64/nagios/plugins/check_couchdb``
+`ln -s /usr/lib/node_modules/check_couchdb/bin/check_couchdb /usr/lib64/nagios/plugins/check_couchdb`
 
 Usage
 -----
