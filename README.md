@@ -9,7 +9,8 @@ Install
 ```
 $ npm -g install FreshXOpenSource/check_couchdb
 .... npm output ...
-check_couchdb@0.3.0 /usr/lib/node_modules/check_couchdb```
+check_couchdb@0.3.0 /usr/lib/node_modules/check_couchdb
+```
 
 Now link the check_couchdb binary into your nagios/centreon installation :
 
