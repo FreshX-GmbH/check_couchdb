@@ -1,14 +1,9 @@
 {
   "name": "check_couchdb",
-  "description": "Nagios checker for couchdb",
-  "version": "0.2.0",
+  "description": "Advanced nagios / centreon check for couchdb",
+  "version": "0.3.0",
   "bin": {
     "check_couchdb": "bin/check_couchdb"
-  },
-  "dependencies": {
-    "cradle": "~0.6.7",
-    "minimist": "0.0.8",
-    "async": "~0.7.0"
   },
   "devDependencies": {
     "yui-lint": "~0.1.3",
@@ -36,5 +31,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/FreshXOpenSource/check_couchdb.git"
+  },
+  "dependencies": {
+    "nopt": "~2.2.0"
   }
 }
