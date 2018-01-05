@@ -39,7 +39,9 @@ Usage: check_couchdb   < -H HOSTNAME | --host >  host to connect to
                        [ -p | --pass PASSWORD ]  password to connect with ]
                        [ -P | --port PORT ]      port to connect to, default 5984 (nonssl), 6984 (ssl) ]
                        [ -d | --debug ]          enable debug mode ]
-                       [ -l | --less ]           dump less permformance data ]```
+                       [ -l | --less ]           dump less permformance data
+```
+
 
 Icinga2 command definition example
 ----------------------------------
