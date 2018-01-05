@@ -70,7 +70,7 @@ object CheckCommand "couchdb" {
 	"-l" = {
              "set_if" = "$set_less$"
         }
-    "-V" = {
+        "-V" = {
              "description" = "couchDB Version - default is 1.x; 1 or 2"
              "value" = "$couchdb_version$"
         }
