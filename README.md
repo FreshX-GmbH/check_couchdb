@@ -39,4 +39,46 @@ Usage: check_couchdb   < -H HOSTNAME | --host >  host to connect to
                        [ -p | --pass PASSWORD ]  password to connect with ]
                        [ -P | --port PORT ]      port to connect to, default 5984 (nonssl), 6984 (ssl) ]
                        [ -d | --debug ]          enable debug mode ]
-                       [ -l | --less ]           dump less permformance data ]```
+                       [ -l | --less ]           dump less permformance data
+```
+
+
+Icinga2 command definition example
+----------------------------------
+
+```
+object CheckCommand "couchdb" {
+    command = [ PluginDir + "/check_couchdb" ]
+    timeout = 1m
+    arguments = {
+        "-H" = {
+            "order" = 1
+            "repeat_key" = false
+            "value" = "$couch_address$"
+        }
+	"-p" = {
+            "description" = "password (if required)"
+            "value" = "$couch_pass$"
+        }
+        "-u" = {
+            "description" = "username (if required)"
+            "value" = "$couch_user$"
+        }
+	"-s" = {
+	     "set_if" = "$couch_ssl$"
+        }
+	"-l" = {
+             "set_if" = "$set_less$"
+        }
+        "-V" = {
+             "description" = "couchDB Version - default is 1.x; 1 or 2"
+             "value" = "$couchdb_version$"
+        }
+	"-P" = "$couch_port$"
+    }
+    vars.couch_address = "$host.address$"
+    vars.couch_ssl = false
+    vars.set_less = true
+}
+```
+

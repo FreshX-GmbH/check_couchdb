@@ -26,6 +26,7 @@ var defconf = {
         user: String,
         pass: String,
         debug: Boolean,
+        version: Number,
         less: Boolean
     },
     shortcuts = {
@@ -35,6 +36,7 @@ var defconf = {
         'p': ['--pass'],
         'u': ['--user'],
         'd': ['--debug'],
+        'V': ['--version'],
         'l': ['--less']
     },
     argv = nopt(types, shortcuts, process.argv, 2);
@@ -57,19 +59,27 @@ if(!argv.host) {
                        [ -p | --pass PASSWORD ]  password to connect with ]\n\
                        [ -P | --port PORT ]      port to connect to, default 5984 (nonssl), 6984 (ssl) ]\n\
                        [ -d | --debug ]          enable debug mode ]\n\
+                       [ -V | --version ]          CouchDB Version, defaults to 1.x, Options: 1, 2  ]\n\
                        [ -l | --less ]           dump less permformance data ]\n");
         process.exit(1);
 }
 
 argv.argv=""
 config = extend({}, defconf, argv);
-
 if(config.ssl){
     config.proto="https";
     config.connector=require('https')
     if(!argv.port){
        config.port = 6984;
     }
+}
+
+if(!argv.version){
+    config.statsUrl='/_stats'
+} else if(argv.version == 1 ){
+    config.statsUrl='/_stats';
+} else{
+    config.statsUrl='/_node/couchdb@127.0.0.1/_stats';
 }
 
 function performanceData(json) {
@@ -81,16 +91,24 @@ function performanceData(json) {
     if (json.couchdb) {
         var couchStat = json.couchdb;
         if(config.debug) console.log(couchStat);
-        var httpdStat = json.httpd_status_codes;
+        var httpdStat = json.httpd_status_codes || json.couchdb.httpd_status_codes;
         if(config.debug) console.log(httpdStat);
         var statString = "CouchDB ok|";
-        var openDBString = 'openDatabases='+        couchStat.open_databases.current;
-        var openFileString = ' openFiles='+         couchStat.open_os_files.current;
-        var requestTimeString = ' requestTimeAvg='+ couchStat.request_time.mean;
-        var err401String=' notAuthorizedRequests='+ httpdStat["401"].sum;
-        var err403String=' notAllowedRequests='+    httpdStat["403"].sum;
-        var err400String = ' badResponseRequests='+ httpdStat["400"].sum;
-        var err200String = ' okRequests='+          httpdStat["200"].sum;
+        var openDB = couchStat.open_databases.current || couchStat.open_databases.value;
+        var openDBString = 'openDatabases='+        openDB;
+        var openFile = couchStat.open_os_files.current || couchStat.open_os_files.value;
+        var openFileString = ' openFiles='+         openFile;
+        var requestTime = couchStat.request_time.mean|| couchStat.request_time.value.arithmetic_mean;
+        var requestTimeRounded= requestTime.toFixed(2);
+        var requestTimeString = ' requestTimeAvg='+ requestTimeRounded;
+        var err401 = httpdStat["401"].sum || httpdStat["401"].value;
+        var err403=  httpdStat["403"].sum || httpdStat["403"].value;
+        var err400 = httpdStat["400"].sum || httpdStat["400"].value;
+        var err200 = httpdStat["200"].sum || httpdStat["200"].value;
+        var err401String =' notAuthorizedRequests='+ err401;
+        var err403String=' notAllowedRequests='+    err403;
+        var err400String = ' badResponseRequests='+ err400;
+        var err200String = ' okRequests='+          err200;
 
         if(config.less){
            console.log(statString+
@@ -114,10 +132,11 @@ function performanceData(json) {
     process.exit(3);
 }
 
+
 var options = {
   host: config.host,
   port: config.port,
-  path: '/_stats',
+  path: config.statsUrl,
 };
 
 if(config.user){
