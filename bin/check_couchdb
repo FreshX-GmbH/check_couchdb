@@ -1,58 +1,61 @@
 #!/usr/bin/env node
 //
-//   Nagios check couchdb 0.2.0 by FreshX Labs / 23.04.2014
+//   Nagios check couchdb 0.3.0 by FreshX Labs / 20.03.2019
 //
 //   For more info see https://github.com/FreshXOpenSource/check_couchdb
 //
 //   Usage: check_couchdb [options]
 //
+'use strict';
 
-var defconf = {
-        port: 5984,
-        debug: false,
-        ssl: false,
-        proto: "http",
-        urlAuth: "",
-        less: false,
-        connector: require('http')
-    },
-    config,
-    nopt = require('nopt'),
-    types = {
-        host: String,
-        port: Number,
-        ssl: Boolean,
-        help: Boolean,
-        user: String,
-        pass: String,
-        debug: Boolean,
-        version: Number,
-        less: Boolean
-    },
-    shortcuts = {
-       'H': ['--host'],
-        'P': ['--port'],
-        'h': ['--help'],
-        'p': ['--pass'],
-        'u': ['--user'],
-        'd': ['--debug'],
-        'V': ['--version'],
-        'l': ['--less']
-    },
-    argv = nopt(types, shortcuts, process.argv, 2);
+const nopt = require('nopt');
+const http = require('http');
+
+const defconf = {
+    port: 5984,
+    debug: false,
+    ssl: false,
+    proto: 'http',
+    urlAuth: '',
+    less: false,
+    connector: http,
+};
+const types = {
+    host: String,
+    port: Number,
+    ssl: Boolean,
+    help: Boolean,
+    user: String,
+    pass: String,
+    debug: Boolean,
+    version: Number,
+    less: Boolean,
+};
+const shortcuts = {
+    H: ['--host'],
+    P: ['--port'],
+    h: ['--help'],
+    p: ['--pass'],
+    u: ['--user'],
+    d: ['--debug'],
+    V: ['--version'],
+    l: ['--less'],
+};
+const argv = nopt(types, shortcuts, process.argv, 2);
 
 function extend(target) {
-    var sources = [].slice.call(arguments, 1);
-    sources.forEach(function (source) {
-        for (var prop in source) {
+    const sources = [].slice.call(arguments, 1);
+    sources.forEach((source) => {
+        for (const prop in source) {
             target[prop] = source[prop];
         }
     });
-    return target;
-}     
 
-if(!argv.host) {
-        console.log("Usage: check_couchdb   < -H HOSTNAME | --host >  host to connect to\n\
+    return target;
+}
+
+if (!argv.host) {
+    console.log('Usage: check_couchdb   < -H HOSTNAME | --host >  host to connect to\n\
                        [ -h | --help ]           show help ]\n\
                        [ -s | --ssl  ]           enable SSL, default NO ]\n\
                        [ -u | --user USERNAME ]  username to connect with ]\n\
@@ -60,26 +63,27 @@ if(!argv.host) {
                        [ -P | --port PORT ]      port to connect to, default 5984 (nonssl), 6984 (ssl) ]\n\
                        [ -d | --debug ]          enable debug mode ]\n\
                        [ -V | --version ]          CouchDB Version, defaults to 1.x, Options: 1, 2  ]\n\
-                       [ -l | --less ]           dump less permformance data ]\n");
-        process.exit(1);
+                       [ -l | --less ]           dump less permformance data ]\n');
+    process.exit(1);
 }
 
-argv.argv=""
-config = extend({}, defconf, argv);
-if(config.ssl){
-    config.proto="https";
-    config.connector=require('https')
-    if(!argv.port){
-       config.port = 6984;
+argv.argv = '';
+const config = extend({}, defconf, argv);
+if (config.ssl) {
+    config.proto = 'https';
+    config.connector = http;
+    if (!argv.port) {
+        config.port = 6984;
     }
 }
 
-if(!argv.version){
-    config.statsUrl='/_stats'
-} else if(argv.version == 1 ){
-    config.statsUrl='/_stats';
-} else{
-    config.statsUrl='/_node/couchdb@127.0.0.1/_stats';
+if (!argv.version) {
+    config.statsUrl = '/_stats';
+} else if (argv.version === 1) {
+    config.statsUrl = '/_stats';
+} else {
+    //  CouchDB 2 Stats config.statsUrl='/_node/couchdb@127.0.0.1/_stats'; >> only available as admin user. We do not want this for remote Monitoring.
+    config.statsUrl = '/_up';
 }
 
 function performanceData(json) {
@@ -87,87 +91,98 @@ function performanceData(json) {
         console.log('ERROR:', json.error);
         process.exit(2);
     }
-    
-    if (json.couchdb) {
-        var couchStat = json.couchdb;
-        if(config.debug) console.log(couchStat);
-        var httpdStat = json.httpd_status_codes || json.couchdb.httpd_status_codes;
-        if(config.debug) console.log(httpdStat);
-        var statString = "CouchDB ok|";
-        var openDB = couchStat.open_databases.current || couchStat.open_databases.value;
-        var openDBString = 'openDatabases='+        openDB;
-        var openFile = couchStat.open_os_files.current || couchStat.open_os_files.value;
-        var openFileString = ' openFiles='+         openFile;
-        var requestTime = couchStat.request_time.mean|| couchStat.request_time.value.arithmetic_mean;
-        var requestTimeRounded= requestTime.toFixed(2);
-        var requestTimeString = ' requestTimeAvg='+ requestTimeRounded;
-        var err401 = httpdStat["401"].sum || httpdStat["401"].value;
-        var err403=  httpdStat["403"].sum || httpdStat["403"].value;
-        var err400 = httpdStat["400"].sum || httpdStat["400"].value;
-        var err200 = httpdStat["200"].sum || httpdStat["200"].value;
-        var err401String =' notAuthorizedRequests='+ err401;
-        var err403String=' notAllowedRequests='+    err403;
-        var err400String = ' badResponseRequests='+ err400;
-        var err200String = ' okRequests='+          err200;
 
-        if(config.less){
-           console.log(statString+
-                       openDBString+
-                       requestTimeString+
-                       err401String)
+    if (argv.version !== 2) {
+        let couchStat;
+        if (json.couchdb) {
+            couchStat = json.couchdb;
+        }
+        if (config.debug) {
+            console.log(couchStat);
+        }
+        const httpdStat = json.httpd_status_codes || json.couchdb.httpd_status_codes;
+        if (config.debug) {
+            console.log(httpdStat);
+        }
+        const statString = 'CouchDB ok|';
+        const openDB = couchStat.open_databases.current || couchStat.open_databases.value;
+        const openDBString = ` openDatabases=${openDB}`;
+        const openFile = couchStat.open_os_files.current || couchStat.open_os_files.value;
+        const openFileString = ` openDatabases=${openFile}`;
+        const requestTime = couchStat.request_time.mean || couchStat.request_time.value.arithmetic_mean;
+        const requestTimeRounded = requestTime.toFixed(2);
+        const requestTimeString = ` requestTimeAvg=${requestTimeRounded}`;
+        const err401 = httpdStat['401'].sum || httpdStat['401'].value;
+        const err403 =  httpdStat['403'].sum || httpdStat['403'].value;
+        const err400 = httpdStat['400'].sum || httpdStat['400'].value;
+        const err200 = httpdStat['200'].sum || httpdStat['200'].value;
+        const err401String = ` notAuthorizedRequests=${err401}`;
+        const err403String = ` notAllowedRequests=${err403}`;
+        const err400String = ` badResponseRequests=${err400}`;
+        const err200String = ` okRequests=${err200}`;
+
+        if (config.less) {
+            console.log(statString +
+                openDBString +
+                requestTimeString +
+                err401String);
         } else {
-           console.log(statString+
-                       openDBString+
-                       openFileString+
-                       requestTimeString+
-                       err200String+
-                       err401String+
-                       err400String+
-                       err403String)
+            console.log(statString +
+                openDBString +
+                openFileString +
+                requestTimeString +
+                err200String +
+                err401String +
+                err400String +
+                err403String);
         }
         process.exit(0);
+    } else {
+        if (json.status === 'ok') {
+            console.log('CouchDB ok');
+            process.exit(0);
+        } else {
+            console.log('ERROR:', json.status);
+            process.exit(2);
+        }
     }
-
-    console.log('Uknown:', 'Unknown status: ' + JSON.stringify(json));
+    console.log(`Unknown: ${JSON.stringify(json)}`);
     process.exit(3);
 }
 
-
-var options = {
-  host: config.host,
-  port: config.port,
-  path: config.statsUrl,
+const options = {
+    host: config.host,
+    port: config.port,
+    path: config.statsUrl,
 };
 
-if(config.user){
-  options.headers= {
-    'Authorization': 'Basic ' + new Buffer(config.user+ ':' + config.pass).toString('base64')
-  }  
+if (config.user) {
+    options.headers = {
+        Authorization: `Basic ${new Buffer(`${config.user}:${config.pass}`).toString('base64')}`,
+    };
 }
 
-process.on('uncaughtException', function (err) {
-    if(config.debug){
-      console.log("Error : "+err);
+process.on('uncaughtException', (err) => {
+    if (config.debug) {
+        console.log(`Error : ${err}`);
     } else {
-      console.log("Error in "+err.syscall+" : "+err.code);
+        console.log(`Error in ${err.syscall} : ${err.code}`);
     }
     process.exit(2);
-}); 
-
-request = config.connector.get(options, function(res,err){
-  var body = "";
-  res.on('error', function(e) {
-    console.log("Got error: " + e.message + " / "+e);
-  });
-  res.on('data', function(data) {
-    body += data;
-  });
-  res.on('end', function() {
-    performanceData(JSON.parse(body))
-  })
-  request.on('response', function(res) {
-    console.log('status code: ' + res.statusCode);
-  });
-
 });
 
+const request = config.connector.get(options, (res, err) => {
+    let body = '';
+    res.on('error', (e) => {
+        console.log(`Got error: ${e.message} / ${e}`);
+    });
+    res.on('data', (data) => {
+        body += data;
+    });
+    res.on('end', () => {
+        performanceData(JSON.parse(body));
+    });
+    request.on('response', (res) => {
+        console.log(`status code: ${res.statusCode}`);
+    });
+});
